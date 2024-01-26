@@ -1,0 +1,113 @@
+package com.sk.i2i.isbu.mth501.aom;
+import org.springframework.http.ResponseEntity;
+import java.sql.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class Main{
+    public static void main(String[] args) throws SQLException {
+
+        private static Logger logger = LoggerFactory.getLogger(OracleOperations.class);
+
+        public static Connection getConnection(){
+        String driver = "oracle.jdbc.driver.OracleDriver";
+        String dbUrl = "jdbc:oracle:thin:@34.125.2.150:1521:XE";
+        String username = "C##MTH";
+        String password = "123456";
+
+        Connection connection = null;
+        CallableStatement callableStatement = null;
+        ResultSet resultSet = null;
+
+        try{
+            logger.info("Connecting..." );
+            Class.forName(driver);
+            connection = DriverManager.getConnection(dbUrl, username, password);
+            System.out.println("Database connection successful");
+
+            //Create SQL for CallableStatement
+            String sql = "{call GetInformations(?)}"
+
+            //Create a CallableStatement
+            callableStatement = connection.prepareCall(sql);
+
+            //Execute the CallableStatement
+            resultSet = callableStatement.executeQuery();
+
+            //Process the ResultSet
+            while(resultSet.next()){
+                System.out.println(resultSet.getInt("id") + " " 
+                + resultSet.getInt("userId") + " " 
+                + resultSet.getStirng("first_name") + " " 
+                + resultSet.getStirng("last_name") + " " 
+                + resultSet.getInt("remaining_minutes") + " " 
+                + resultSet.getInt("remaining_messages") + " " 
+                + resultSet.getInt("remaining_internet"));
+            }
+        }
+        catch (SQLException | ClassNotFoundException e) {
+            logger.error(e.getLocalizedMessage());
+            throw new RuntimeException(e);
+        }
+        return connection;
+        finally{
+            DriverManager.closeResultSet(resultSet);
+            DriverManager.closeCallableStatement(callableStatement);
+            DriverManager.closeConnection(connection);
+        }
+}
+
+public static int login(String msisdn, String encryptedPassword) {
+    // for testing 
+    /* 
+    if (msisdn.equals("5339635384") && encryptedPassword.equals("12345")){
+        logger.debug("authenticated");
+    return 1;
+}
+    else{
+        logger.debug("NOT authenticated"); return 0;
+} */
+
+    Connection theConnection = getConnection();
+
+    String sql = "{? = call ENTEROCELL.login(?, ?)}";
+    logger.info("SQL is " + sql );
+    int isAuth;
+
+    try {
+        CallableStatement callableStatement = theConnection.prepareCall(sql);
+        callableStatement.registerOutParameter(1, Types.INTEGER);
+        callableStatement.setString(2, msisdn);
+        callableStatement.setString(3,encryptedPassword);
+
+        logger.info("Executing SQL..." );
+        callableStatement.execute();
+        isAuth = callableStatement.getInt(1);
+        logger.info("Result is " + isAuth);
+    }
+    catch (SQLException e) {
+        logger.error(e.getLocalizedMessage());
+        throw new RuntimeException(e);
+    }
+
+    finally {
+        try {
+            theConnection.close();
+        }
+        catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    if (isAuth == 1) {
+        logger.debug("Subscriber is Authenticated..." );
+        //return ResponseEntity.ok("Successful login.");
+    }
+    else {
+        logger.error("Subscriber is not Authenticated..." );
+        //return ResponseEntity.badRequest().body("Login failed.");
+    }
+    return isAuth;
+    }
+}
+}
